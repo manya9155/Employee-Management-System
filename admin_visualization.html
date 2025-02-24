@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <title>Admin Database Visualization</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            text-align: center; 
+            background-color: #111111; 
+            color: #FFD700; 
+        }
+        canvas { 
+            max-width: 600px; 
+            margin: 20px auto; 
+            border: 2px solid #FFD700;
+            background-color: #222;
+        }
+        h1, h2 {
+            color: #FFD700;
+            text-shadow: 1px 1px 2px #000;
+        }
+        button {
+            background-color: #FFD700;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            margin: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        button:hover {
+            background-color: #000;
+            color: #FFD700;
+            border: 1px solid #FFD700;
+        }
+        table {
+            margin: 20px auto;
+            border-collapse: collapse;
+            background-color: #222;
+        }
+        th, td {
+            border: 1px solid #FFD700;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #333;
+            color: #FFD700;
+        }
+        input {
+            background-color: #333;
+            color: #FFD700;
+            border: 1px solid #FFD700;
+            padding: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Admin Database Visualization</h1>
+
+    <h2>Role Distribution</h2>
+    <canvas id="rolesChart"></canvas>
+
+    <h2>Departments - Employee Count</h2>
+    <canvas id="departmentsChart"></canvas>
+
+    <script>
+        async function loadAdminData() {
+            try {
+                const response = await fetch('http://localhost:5000/admin-visualization');
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status} ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                console.log("✅ Admin Data:", data);
+
+                renderRolesChart(data.users);
+                renderDepartmentsChart(data.departments);
+
+            } catch (error) {
+                console.error("❌ Error loading admin data:", error);
+            }
+        }
+
+        function renderRolesChart(users) {
+            const roleCounts = users.reduce((acc, user) => {
+                acc[user.role] = (acc[user.role] || 0) + 1;
+                return acc;
+            }, {});
+
+            new Chart(document.getElementById('rolesChart'), {
+                type: 'pie',
+                data: {
+                    labels: Object.keys(roleCounts),
+                    datasets: [{
+                        data: Object.values(roleCounts),
+                        backgroundColor: ['#ff6384', '#36a2eb']
+                    }]
+                }
+            });
+        }
+
+        function renderDepartmentsChart(departments) {
+            const labels = departments.map(dept => dept.name);
+            const employeeCounts = departments.map(dept => dept.employees.length);
+
+            new Chart(document.getElementById('departmentsChart'), {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: "Number of Employees",
+                        data: employeeCounts,
+                        backgroundColor: '#36a2eb'
+                    }]
+                }
+            });
+        }
+
+        loadAdminData();
+    </script>
+    <h2>Export Users</h2>
+    <button onclick="exportUsers()">Download Excel</button>
+    
+    <h2>Critical Systems Analysis (Editable RTO)</h2>
+    <table id="criticalSystemsTable">
+        <thead>
+            <tr>
+                <th>System Name</th>
+                <th>Impact of Downtime</th>
+                <th>Max Downtime (MAD)</th>
+                <th>Recovery Buffer</th>
+                <th>Priority</th>
+                <th>Calculated RTO</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <script>
+        async function loadCriticalSystems() {
+            try {
+                const response = await fetch('http://localhost:5000/critical-systems-config');
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status} ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                populateEditableTable('criticalSystemsTable', data.criticalSystems);
+            } catch (error) {
+                console.error("❌ Error loading critical systems:", error);
+            }
+        }
+
+        function populateEditableTable(tableId, data) {
+            const tableBody = document.getElementById(tableId).querySelector('tbody');
+            tableBody.innerHTML = "";
+
+            data.forEach(item => {
+                const row = document.createElement("tr");
+
+                row.innerHTML = `
+                    <td>${item.system}</td>
+                    <td>${item.impact}</td>
+                    <td><input type="number" value="${item.mad}" id="mad-${item.system}"></td>
+                    <td><input type="number" value="${item.buffer}" id="buffer-${item.system}"></td>
+                    <td><input type="number" value="${item.priority}" id="priority-${item.system}"></td>
+                    <td id="rto-${item.system}">${item.rto}</td>
+                    <td><button onclick="updateRTO('${item.system}')">Update</button></td>
+                `;
+
+                tableBody.appendChild(row);
+            });
+        }
+
+        async function updateRTO(system) {
+            const mad = parseFloat(document.getElementById(`mad-${system}`).value);
+            const buffer = parseFloat(document.getElementById(`buffer-${system}`).value);
+            const priority = parseFloat(document.getElementById(`priority-${system}`).value);
+
+            if (isNaN(mad) || isNaN(buffer) || isNaN(priority) || priority <= 0) {
+                alert("Please enter valid numeric values. Priority must be greater than 0.");
+                return;
+            }
+
+            const rto = (mad + buffer) / priority;
+            
+            document.getElementById(`rto-${system}`).textContent = rto.toFixed(2) + " hrs";
+
+            const response = await fetch('http://localhost:5000/update-rto', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ system, mad, buffer, priority, rto })
+            });
+
+            const data = await response.json();
+            alert(`RTO Updated for ${system}`);
+        }
+
+        loadCriticalSystems();
+    </script>
+
+
+        <script>
+            function exportUsers() {
+                window.location.href = 'http://localhost:5000/export-users';
+            }
+        </script>
+        <h2>Export Critical Systems Analysis</h2>
+        <button onclick="exportCriticalSystems()">Download Excel</button>
+        
+        <script>
+            function exportCriticalSystems() {
+                window.location.href = 'http://localhost:5000/export-critical-systems';
+            }
+        </script>
+    
+    
+</body>
+</html>

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <title>Database Visualization</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            text-align: center; 
+            background-color: #111111; 
+            color: #FFD700; 
+        }
+        canvas { 
+            max-width: 600px; 
+            margin: 20px auto; 
+            border: 2px solid #FFD700;
+            background-color: #222;
+        }
+        h1, h2 {
+            color: #FFD700;
+            text-shadow: 1px 1px 2px #000;
+        }
+        .chart-container {
+            margin: 30px auto;
+            padding: 15px;
+            background-color: #222;
+            border: 1px solid #FFD700;
+            border-radius: 5px;
+            max-width: 650px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Database Visualization</h1>
+
+    <h2>Business Units - Sales Distribution</h2>
+    <canvas id="businessUnitsChart"></canvas>
+
+    <h2>Subfunctions - Problem Statements</h2>
+    <canvas id="subfunctionsChart"></canvas>
+
+    <h2>Vendors - Product Distribution</h2>
+    <canvas id="vendorsChart"></canvas>
+
+    <script>
+        async function loadDatabaseData() {
+            try {
+                const response = await fetch('http://localhost:5000/database-visualization');
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status} ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                console.log("✅ Database Data:", data);
+
+                renderBusinessUnitsChart(data.businessUnits);
+                renderSubfunctionsChart(data.subfunctions);
+                renderVendorsChart(data.vendors);
+
+            } catch (error) {
+                console.error("❌ Error loading database data:", error);
+            }
+        }
+
+        function renderBusinessUnitsChart(businessUnits) {
+            const labels = businessUnits.map(unit => unit.name);
+            const salesData = businessUnits.map(unit => unit.targetSales);
+
+            new Chart(document.getElementById('businessUnitsChart'), {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: salesData,
+                        backgroundColor: ['#ff6384', '#36a2eb', '#ffce56', '#4bc0c0', '#9966ff']
+                    }]
+                }
+            });
+        }
+
+        function renderSubfunctionsChart(subfunctions) {
+            const labels = subfunctions.map(sub => sub.name);
+            const counts = subfunctions.map(() => 1);  // Each subfunction counts as 1
+
+            new Chart(document.getElementById('subfunctionsChart'), {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: "Number of Problem Statements",
+                        data: counts,
+                        backgroundColor: '#36a2eb'
+                    }]
+                }
+            });
+        }
+
+        function renderVendorsChart(vendors) {
+            const labels = vendors.map(vendor => vendor.name);
+            const products = vendors.map(() => 1);  // Each vendor has 1 product
+
+            new Chart(document.getElementById('vendorsChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: products,
+                        backgroundColor: ['#ff6384', '#36a2eb', '#ffce56', '#4bc0c0', '#9966ff']
+                    }]
+                }
+            });
+        }
+
+        loadDatabaseData();
+    </script>
+</body>
+</html>

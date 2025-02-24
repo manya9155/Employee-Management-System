@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Login</title>
+</head>
+
+<body style="font-family: Arial, sans-serif; background-color: #222; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0;">
+    <div style="background-color: #333; padding: 30px; border-radius: 10px; box-shadow: 0px 0px 15px rgba(255,215,0,0.3); max-width: 400px; width: 100%; text-align: center; border: 2px solid #FFD700;">
+        <h1 style="color: #FFD700; margin-bottom: 10px;">Employee Management Systems</h1>
+        <h3 style="color: #f0f0f0; margin-bottom: 20px; font-weight: normal;">Enter your login credentials</h3>
+
+        <form id="loginForm" style="display: flex; flex-direction: column; gap: 15px;">
+            <input type="text" id="username" placeholder="Enter your Username" required style="padding: 12px; border: 1px solid #FFD700; border-radius: 4px; font-size: 14px; background-color: #444; color: #fff;">
+            <input type="password" id="password" placeholder="Enter your Password" required style="padding: 12px; border: 1px solid #FFD700; border-radius: 4px; font-size: 14px; background-color: #444; color: #fff;">
+            <button type="submit" style="background-color: #FFD700; color: #222; padding: 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold; transition: all 0.3s; box-shadow: 0px 4px 8px rgba(0,0,0,0.2);">Login</button>
+        </form>
+        
+        <script>
+        document.getElementById("loginForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            
+            const response = await fetch('http://localhost:5000/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: document.getElementById("username").value,
+                    password: document.getElementById("password").value
+                })
+            });
+        
+            const data = await response.json();
+        
+            if (response.ok) {
+                localStorage.setItem("token", data.token);
+                localStorage.setItem("role", data.role); 
+                alert("Login successful");
+        
+                if (data.role === 'admin') {
+                    window.location.href = "admin_dashboard.html";
+                } else {
+                    window.location.href = "employee_dashboard.html";
+                }
+            } else {
+                alert(data.message);
+            }
+        });
+        </script>
+        
+        <p style="margin-top: 20px; color: #f0f0f0;">Not registered?
+            <a href="register.html" style="text-decoration: none; color: #FFD700; font-weight: bold; transition: color 0.3s;">
+                Create an account
+            </a>
+        </p>
+    </div>
+</body>
+
+</html>
